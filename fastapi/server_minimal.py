@@ -13,77 +13,136 @@ and does not involve stuff like Bootstrap, Javascript, JQuery, etc.
 from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from yolov5.detect import food_classification
-# from ai_service.yolov5.detect import classification_yolov5
+import numpy as np
+import cv2, torch, base64, io, json, os, time
+from io import BytesIO
 from starlette import status
 from PIL import Image
-from io import BytesIO
-import numpy as np
-import cv2
-import torch
-import base64
-import io
-import json
-import os
-import time
+from torchvision.transforms import functional as F
+import shutil
 
 app = FastAPI()
 
-@app.get("/")
-async def home(request: Request):
-  ''' Returns barebones HTML form allowing the user to select a file and model '''
+model = torch.load("D:/CareSpoon-AI/fastapi/best.pt")
 
-  html_content = '''
-<form method="post" enctype="multipart/form-data">
-  <div>
-    <label>Upload Image</label>
-    <input name="file" type="file" multiple>
-    <div>
-      <label>Select YOLO Model</label>
-      <select name="model_name">
-        <option>yolov5s</option>
-        <option>yolov5m</option>
-        <option>yolov5l</option>
-        <option>yolov5x</option>
-      </select>
-    </div>
-  </div>
-  <button type="submit">Submit</button>
-</form>
-'''
+def preprocess_image(image):
+    image = F.resize(image, (640, 640))  # 이미지 크기 조정 (적절한 크기로 수정 가능)
+    image = F.to_tensor(image)  # 텐서로 변환
+    image = F.normalize(image, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 정규화
+    return image.unsqueeze(0)
+    # return image
 
-  return HTMLResponse(content=html_content, status_code=200)
+@app.post("/detect")
+async def detect(file: UploadFile = File(...)):
+    # 업로드된 이미지를 PIL 이미지로 변환
+    image = Image.open(io.BytesIO(await file.read())).convert("RGB")
 
-@app.post("/image")
-async def classification(file: UploadFile = File(...)):
-    # model = torch.hub.load('ultralytics/yolov5', model_name, pretrained=True, force_reload = False)
-    # model = torch.load('D:\CareSpoon-AI\fastapi\best.pt')
-    #This is how you decode + process image with PIL
-    # results = model(Image.open(BytesIO(await file.read())))
-
-    #This is how you decode + process image with OpenCV + numpy
-    # results = model(cv2.cvtColor(cv2.imdecode(np.fromstring(await file.read(), np.uint8), cv2.IMREAD_COLOR), cv2.COLOR_RGB2BGR))
-
-    # json_results = results_to_json(results,model)
-    # UPLOAD_DIR = '../uploadfile'
-    print("----------classification----------")
     try:
-        image = await file.read()
-        print("image = await file.read()")
-        pil_image = Image.open(BytesIO(image))
-        print("")
-        output = BytesIO()
-        pil_image.save(output, format='JPEG')
-        content = output.getvalue()
-        print("이미지 받기 성공")
-
-        # filename = f"{str(uuid.uuid4())}.jpg"
-        # with open(os.path.join(UPLOAD_DIR, filename), "wb") as fp:
-        #   fp.write(content)
+        predictions = food_classification(image)
     except Exception as e:
-        # logger.exception(f"create_food_item fail:\n\t{e}\nWrong image")
-        # print(e)
-        print("성공")
-    results = food_classification(content)
+        print(e)
+
+    return predictions  # 예시로 추론 결과를 딕셔너리 형태로 반환
+    # return results
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    # 업로드된 이미지를 PIL 이미지로 변환
+    image = Image.open(io.BytesIO(await file.read())).convert("RGB")
+    
+    # 이미지 전처리
+    input_tensor = preprocess_image(image)
+    
+    # 모델 추론
+    with torch.no_grad():
+        predictions = model(input_tensor)
+    
+    # 추론 결과 반환
+    return predictions
+
+@app.post("/file")
+def file(file: UploadFile = File(...)):
+    UPLOAD_DIR = 'fastapi\photo'
+    SERVER_IMG_DIR = os.path.normpath(os.path.join('http://localhost:8000/', 'file/'))
+
+    if file != None:
+        local_path = os.path.normpath(os.path.join(UPLOAD_DIR, file.filename))
+        print(SERVER_IMG_DIR)
+        print(local_path)
+        with open(local_path, 'wb') as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        server_path = os.path.join(SERVER_IMG_DIR, file.filename)
+
+    return {
+        "content_type": file.content_type,
+        "filename": file.filename,
+        "server_path": server_path
+    }
+
+
+@app.post("/photo")
+async def upload_photo(file: UploadFile):
+    UPLOAD_DIR = "./photo"  # 이미지를 저장할 서버 경로
+    
+    # if not os.path.exists(UPLOAD_DIR):
+    #     os.makedirs(UPLOAD_DIR)
+
+    content = await file.read()
+    
+    filename = f"{file.filename}.jpg"  # uuid로 유니크한 파일명으로 변경
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    print("filepath")
+    print(os.path.normpath(filepath))
+
+    with open(os.path.normpath(filepath), "wb") as fp:
+        fp.write(content)  # 서버 로컬 스토리지에 이미지 저장 (쓰기)
+
+    return {"filename": filename}
+
+@app.post("/classification2")
+async def classification2(file: UploadFile = File(...)):
+    # 파일 저장 경로 및 파일명 설정
+    UPLOAD_DIR = "./temp"
+    filename = f"{file.filename}.jpg"
+    file_path = f"./temp/{file.filename}"
+    
+    img = await file.read()
+    
+    print(os.path.join(UPLOAD_DIR, filename))
+    # 이미지 파일을 읽고 저장
+    # with open(os.path.join(UPLOAD_DIR, filename), "wb") as fp:
+    with open(os.path.join(UPLOAD_DIR, filename), "wb") as fp:
+        fp.write(img)
+    
+    # 저장된 이미지 정보 반환
+    print("file_name")
+    print(filename)
+    return {"filename": filename}
+    # results = []
+    # try:
+    #     img = Image.open(BytesIO(await file.read()))
+    #     img.save('./temp/tmp.jpg', format='JPEG')
+
+    #     img = Image.open('./temp/tmp.jpg')
+    #     results = food_classification(img)
+    # except Exception as e:
+    #     print("이미지 받기 실패")
+    #     print(e)
+    
+    # print(results)
+    # return results
+
+@app.post("/classification")
+async def classification(file: UploadFile = File(...)):
+    try:
+        img = Image.open(BytesIO(await file.read()))
+        output = io.BytesIO()
+        img.save(output, format='JPEG')
+        byte_string = output.getvalue()
+    except Exception as e:
+        print("이미지 받기 실패")
+    results = food_classification(byte_string)
     print(results)
     return results
 

@@ -35,16 +35,6 @@ import sys
 from pathlib import Path
 
 import torch
-import argparse
-import io
-import json
-import os
-import platform
-import sys
-from pathlib import Path
-
-import numpy as np
-from PIL import Image
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -62,7 +52,7 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 @smart_inference_mode()
 def run(
-        img0=None,
+        img=None,
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
         source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
@@ -91,7 +81,6 @@ def run(
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
 ):
-    
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -111,11 +100,11 @@ def run(
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    print("type(img0)")
-    print(type(img0))
+    print("----------Datatloader start----------")
     # Dataloader
     bs = 1  # batch_size
-    if img0 is None:
+    if img is None:
+        print("img is None")
         if webcam:
             view_img = check_imshow(warn=True)
             dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
@@ -125,8 +114,8 @@ def run(
         else:
             dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     else:
-        # dataset = CareSpoonLoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-        dataset = LoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+        print("img is Not None")
+        dataset = CareSpoonLoadImages(img, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
@@ -134,14 +123,7 @@ def run(
 
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
-    
-    # predictions = {}
-    # predictions["object"] = []
-
-    print("dataset")
-    print(dataset)
     for path, im, im0s, vid_cap, s in dataset:
-        print(path, im, im0s, vid_cap)
         with dt[0]:
             im = torch.from_numpy(im).to(model.device)
             im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
@@ -199,10 +181,7 @@ def run(
                         annotator.box_label(xyxy, label, color=colors(c, True))
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-                    
                     labels.append(label.split()[0])
-                    print(labels)
-                    # predictions["object"].append(label.split()[0])
                 labels = list(set(labels))
                 labels.remove('그릇')
                 print(labels)
@@ -241,7 +220,11 @@ def run(
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    # return predictions
+    if save_txt or save_img:
+        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+    if update:
+        strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
     return labels
 
 def parse_opt2():
@@ -284,7 +267,7 @@ def parse_opt2():
     print(opt)
     return opt
 
-def parse_opt(img0=None, weight_path='D:/CareSpoon-AI/fastapi/best.pt'):
+def parse_opt(img, weight_path='D:/CareSpoon-AI/fastapi/best.pt'):
     opt = {'weights': ROOT / weight_path,
                 'source': ROOT / 'data/images',
                 'data': ROOT / 'data/coco128.yaml',
@@ -312,7 +295,7 @@ def parse_opt(img0=None, weight_path='D:/CareSpoon-AI/fastapi/best.pt'):
                 'half': False,
                 'dnn': False,
                 'vid_stride': 1,
-                'img': img0}
+                'img': img}
     
     opt['imgsz'] *= 2 if len(opt['imgsz']) == 1 else 1  # expand
     print("opt['weights']")
@@ -321,26 +304,27 @@ def parse_opt(img0=None, weight_path='D:/CareSpoon-AI/fastapi/best.pt'):
 
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    labels = run(opt)
+    labels = run(**vars(opt))
     return labels
 
 def food_classification(img, weight_path='D:/CareSpoon-AI/fastapi/best.pt'):
-    opt = parse_opt(img)
+    # check_requirements(exclude=('tensorboard', 'thop'))
+    # labels = run(**vars(opt))
+    print("----------food_classification----------")
     try:
+        # opt = parse_opt()
+        print("----------parse_opt---------")
+        opt = parse_opt(img)
+        print(opt)
+        print("----------main(opt)---------")
+        # main 함수가 제대로 실행되지 않음
         labels = main(opt)
         print("라벨 받아오기 성공")
         return labels
     except Exception as e:
-        print(e)
         print("라벨 받아오기 실패")
 
 if __name__ == '__main__':
-    img = Image.open(r"./data/images/bus.jpg")
-
-    # Convert the image to a byte string
-    with io.BytesIO() as output:
-        img.save(output, format="JPEG")
-        byte_string = output.getvalue()
     try:   
         print("----------main----------")
         opt = parse_opt()
