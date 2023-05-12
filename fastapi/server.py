@@ -38,8 +38,6 @@ def file(file: UploadFile = File(...)):
         with open(local_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-    print("local_path")
-    print(local_path)
     results = food_classification(local_path)
 
     return results

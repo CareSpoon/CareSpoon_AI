@@ -61,40 +61,36 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 
 @smart_inference_mode()
-def run(
-        weights=ROOT / 'yolov5s.pt',  # model path or triton URL
-        source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
-        data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(640, 640),  # inference size (height, width)
-        conf_thres=0.25,  # confidence threshold
-        iou_thres=0.45,  # NMS IOU threshold
-        max_det=1000,  # maximum detections per image
-        device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=False,  # show results
-        save_txt=False,  # save results to *.txt
-        save_conf=False,  # save confidences in --save-txt labels
-        save_crop=False,  # save cropped prediction boxes
-        nosave=False,  # do not save images/videos
-        classes=None,  # filter by class: --class 0, or --class 0 2 3
-        agnostic_nms=False,  # class-agnostic NMS
-        augment=False,  # augmented inference
-        visualize=False,  # visualize features
-        update=False,  # update all models
-        project=ROOT / 'runs/detect',  # save results to project/name
-        name='exp',  # save results to project/name
-        exist_ok=False,  # existing project/name ok, do not increment
-        line_thickness=3,  # bounding box thickness (pixels)
-        hide_labels=False,  # hide labels
-        hide_conf=False,  # hide confidences
-        half=False,  # use FP16 half-precision inference
-        dnn=False,  # use OpenCV DNN for ONNX inference
-        vid_stride=1,  # video frame-rate stride
-):
+def run(opt):
+    weights=opt.weights
+    source=opt.source
+    data=opt.data
+    imgsz=opt.imgsz
+    conf_thres=0.25
+    iou_thres=0.45
+    max_det=1000
+    device=''
+    view_img=False
+    save_txt=False
+    save_conf=False
+    save_crop=False
+    nosave=False
+    classes=None
+    agnostic_nms=False
+    augment=False
+    visualize=False
+    update=False
+    project=ROOT / 'runs/detect'
+    name='exp'
+    exist_ok=False
+    line_thickness=3
+    hide_labels=False
+    hide_conf=False
+    half=False
+    dnn=False
+    vid_stride=1
     
     source = str(source)
-    # print(str(weights))
-    print("source path")
-    print(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
@@ -112,24 +108,9 @@ def run(
     model = DetectMultiBackend(weights, device=device, dnn=dnn, data=data, fp16=half)
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-
-    print("type(img0)")
-    # print(type(img0))
-    # Dataloader
     bs = 1  # batch_size
+
     dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    # if img0 is None:
-    #     if webcam:
-    #         view_img = check_imshow(warn=True)
-    #         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    #         bs = len(dataset)
-    #     elif screenshot:
-    #         dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
-    #     else:
-    #         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    # else:
-    #     # dataset = CareSpoonLoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    #     dataset = LoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
@@ -137,12 +118,7 @@ def run(
 
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
-    
-    # predictions = {}
-    # predictions["object"] = []
 
-    print("dataset")
-    print(dataset)
     for path, im, im0s, vid_cap, s in dataset:
         print(path, im, im0s, vid_cap)
         with dt[0]:
@@ -159,9 +135,6 @@ def run(
         # NMS
         with dt[2]:
             pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-
-        # Second-stage classifier (optional)
-        # pred = utils.general.apply_classifier(pred, classifier_model, im, im0s)
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
@@ -204,7 +177,6 @@ def run(
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
                     
                     labels.append(label.split()[0])
-                    print(labels)
                     # predictions["object"].append(label.split()[0])
                 labels = list(set(labels))
                 labels.remove('그릇')
@@ -249,8 +221,6 @@ def run(
 
 def parse_opt(source_path):
     weight_path = Path('D:/CareSpoon-AI/fastapi/best.pt')
-    print("source path")
-    print(source_path)
     
     parser = argparse.ArgumentParser()
     # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
@@ -283,34 +253,24 @@ def parse_opt(source_path):
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     parser.add_argument('--vid-stride', type=int, default=1, help='video frame-rate stride')
-    # parser.add_argument('--img', default=img)
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(vars(opt))
-    print("parser")
-    print(parser)
-    print("opt")
-    print(opt)
     return opt
 
 def main(opt):
-    check_requirements(exclude=('tensorboard', 'thop'))
-    labels = run(opt)
-    return labels
+    try:
+        check_requirements(exclude=('tensorboard', 'thop'))
+        labels = run(opt)
+        return labels
+    except Exception as e:
+        print(e)
 
 def food_classification(source_path):
     source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
-    print(source_path)
-    # img = Image.open(source_path)
-
-    # with io.BytesIO() as output:
-    #     img.save(output, format="JPEG")
-    #     byte_string = output.getvalue()
-    try:   
-        print("----------main----------")
+    try:
         opt = parse_opt(source_path)
-        labels = main(opt)
-        print("성공")
+        labels = main(opt) # 여기서 에러 발생
         return labels
     except Exception as e:
-        print("실패")
+        print(e)
