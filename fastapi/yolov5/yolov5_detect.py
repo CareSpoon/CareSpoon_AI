@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
 """
 Run YOLOv5 detection inference on images, videos, directories, globs, YouTube, webcam, streams, etc.
 
@@ -35,16 +35,6 @@ import sys
 from pathlib import Path
 
 import torch
-import argparse
-import io
-import json
-import os
-import platform
-import sys
-from pathlib import Path
-
-import numpy as np
-from PIL import Image
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -53,7 +43,7 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.common import DetectMultiBackend
-from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams, CareSpoonLoadImages
+from utils.dataloaders import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
 from utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
                            increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
 from utils.plots import Annotator, colors, save_one_box
@@ -90,11 +80,7 @@ def run(
         dnn=False,  # use OpenCV DNN for ONNX inference
         vid_stride=1,  # video frame-rate stride
 ):
-    
     source = str(source)
-    # print(str(weights))
-    print("source path")
-    print(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
@@ -113,38 +99,22 @@ def run(
     stride, names, pt = model.stride, model.names, model.pt
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    print("type(img0)")
-    # print(type(img0))
     # Dataloader
     bs = 1  # batch_size
-    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    # if img0 is None:
-    #     if webcam:
-    #         view_img = check_imshow(warn=True)
-    #         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    #         bs = len(dataset)
-    #     elif screenshot:
-    #         dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
-    #     else:
-    #         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    # else:
-    #     # dataset = CareSpoonLoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-    #     dataset = LoadImages(img0, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+    if webcam:
+        view_img = check_imshow(warn=True)
+        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+        bs = len(dataset)
+    elif screenshot:
+        dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
+    else:
+        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
-    labels = []
-
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
-    
-    # predictions = {}
-    # predictions["object"] = []
-
-    print("dataset")
-    print(dataset)
     for path, im, im0s, vid_cap, s in dataset:
-        print(path, im, im0s, vid_cap)
         with dt[0]:
             im = torch.from_numpy(im).to(model.device)
             im = im.half() if model.fp16 else im.float()  # uint8 to fp16/32
@@ -156,6 +126,7 @@ def run(
         with dt[1]:
             visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
             pred = model(im, augment=augment, visualize=visualize)
+
         # NMS
         with dt[2]:
             pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
@@ -202,14 +173,8 @@ def run(
                         annotator.box_label(xyxy, label, color=colors(c, True))
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-                    
-                    labels.append(label.split()[0])
-                    print(labels)
-                    # predictions["object"].append(label.split()[0])
-                labels = list(set(labels))
-                labels.remove('그릇')
-                print(labels)
 
+            # Stream results
             im0 = annotator.result()
             if view_img:
                 if platform.system() == 'Linux' and p not in windows:
@@ -244,22 +209,19 @@ def run(
     # Print results
     t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    # return predictions
-    return labels
+    if save_txt or save_img:
+        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+    if update:
+        strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
 
-def parse_opt(source_path):
-    weight_path = Path('D:/CareSpoon-AI/fastapi/best.pt')
-    print("source path")
-    print(source_path)
-    
+
+def parse_opt():
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
-    parser.add_argument('--weights', nargs='+', type=str, default=['D:\\CareSpoon-AI\\fastapi\\best.pt'])
-    # parser.add_argument('--source', type=str, default='D:/CareSpoon-AI/fastapi/images/fooddataset_1_001.jpg', help='file/dir/URL/glob/screen/0(webcam)')
-    # parser.add_argument('--source', type=str, default=ROOT / source_path)
-    parser.add_argument('--source', type=str, default=source_path)
+    parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
+    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob/screen/0(webcam)')
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[416], help='inference size h,w')
+    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=1000, help='maximum detections per image')
@@ -283,9 +245,9 @@ def parse_opt(source_path):
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     parser.add_argument('--vid-stride', type=int, default=1, help='video frame-rate stride')
-    # parser.add_argument('--img', default=img)
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
+    print_args(vars(opt))
     print_args(vars(opt))
     print("parser")
     print(parser)
@@ -293,24 +255,12 @@ def parse_opt(source_path):
     print(opt)
     return opt
 
+
 def main(opt):
     check_requirements(exclude=('tensorboard', 'thop'))
-    labels = run(opt)
-    return labels
+    run(**vars(opt))
 
-def food_classification(source_path):
-    source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
-    print(source_path)
-    # img = Image.open(source_path)
 
-    # with io.BytesIO() as output:
-    #     img.save(output, format="JPEG")
-    #     byte_string = output.getvalue()
-    try:   
-        print("----------main----------")
-        opt = parse_opt(source_path)
-        labels = main(opt)
-        print("성공")
-        return labels
-    except Exception as e:
-        print("실패")
+if __name__ == '__main__':
+    opt = parse_opt()
+    main(opt)

@@ -20,6 +20,7 @@ from starlette import status
 from PIL import Image
 from torchvision.transforms import functional as F
 import shutil
+from pathlib import Path
 
 app = FastAPI()
 
@@ -43,7 +44,6 @@ async def detect(file: UploadFile = File(...)):
         print(e)
 
     return predictions  # 예시로 추론 결과를 딕셔너리 형태로 반환
-    # return results
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -63,29 +63,20 @@ async def predict(file: UploadFile = File(...)):
 @app.post("/file")
 def file(file: UploadFile = File(...)):
     UPLOAD_DIR = 'fastapi\photo'
-    SERVER_IMG_DIR = os.path.normpath(os.path.join('http://localhost:8000/', 'file/'))
 
     if file != None:
         local_path = os.path.normpath(os.path.join(UPLOAD_DIR, file.filename))
-        print(SERVER_IMG_DIR)
-        print(local_path)
         with open(local_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
-        server_path = os.path.join(SERVER_IMG_DIR, file.filename)
 
-    return {
-        "content_type": file.content_type,
-        "filename": file.filename,
-        "server_path": server_path
-    }
+    results = food_classification(local_path)
+
+    return results
 
 
 @app.post("/photo")
 async def upload_photo(file: UploadFile):
     UPLOAD_DIR = "./photo"  # 이미지를 저장할 서버 경로
-    
-    # if not os.path.exists(UPLOAD_DIR):
-    #     os.makedirs(UPLOAD_DIR)
 
     content = await file.read()
     
