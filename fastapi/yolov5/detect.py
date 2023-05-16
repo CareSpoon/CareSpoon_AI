@@ -220,13 +220,12 @@ def run(opt):
     return labels
 
 def parse_opt(source_path):
+    ubuntu_path = '/home/ubuntu/'
     weight_path = Path('D:/CareSpoon-AI/fastapi/best.pt')
     
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path or triton URL')
-    parser.add_argument('--weights', nargs='+', type=str, default=['D:\\CareSpoon-AI\\fastapi\\best.pt'])
-    # parser.add_argument('--source', type=str, default='D:/CareSpoon-AI/fastapi/images/fooddataset_1_001.jpg', help='file/dir/URL/glob/screen/0(webcam)')
-    # parser.add_argument('--source', type=str, default=ROOT / source_path)
+    # parser.add_argument('--weights', nargs='+', type=str, default=['D:\\CareSpoon-AI\\fastapi\\best.pt'])
+    parser.add_argument('--weights', nargs='+', type=str, default=['/home/ubuntu/CareSpoon-AI/fastapi/best.pt'])
     parser.add_argument('--source', type=str, default=source_path)
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[416], help='inference size h,w')
@@ -267,7 +266,8 @@ def main(opt):
         print(e)
 
 def food_classification(source_path):
-    source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
+    # source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
+    source_path = os.path.normpath(os.path.join('/home/ubuntu/CareSpoon-AI', source_path))
     try:
         opt = parse_opt(source_path)
         labels = main(opt) # 여기서 에러 발생
