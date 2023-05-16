@@ -25,12 +25,12 @@ from pathlib import Path
 app = FastAPI()
 
 # model = torch.load("D:/CareSpoon-AI/fastapi/best.pt")
-model = torch.load("/home/ubuntu/CareSpoon-AI/fastapi/best.pt")
+model = torch.load("/home/ubuntu/CareSpoon_AI/fastapi/best.pt")
 
-@app.post("/file")
-def file(file: UploadFile = File(...)):
+@app.post("/predict")
+def predict(file: UploadFile = File(...)):
     # UPLOAD_DIR = 'D:/CareSpoon-AI/fastapi/photo'
-    UPLOAD_DIR = '/home/ubuntu/CareSpoon-AI/fastapi/photo'
+    UPLOAD_DIR = '/home/ubuntu/CareSpoon_AI/fastapi/photo'
 
     if file != None:
         os.makedirs(UPLOAD_DIR, exist_ok=True)  # 디렉토리 생성
