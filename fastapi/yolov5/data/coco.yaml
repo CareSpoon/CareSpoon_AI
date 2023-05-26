@@ -9,28 +9,17 @@
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..] 
 # path: ../fooddataset_2  # dataset root dir
-train: ../fooddataset_3/train/images  # train images (relative to 'path') 118287 images
-val: ../fooddataset_3/validation/images  # val images (relative to 'path') 5000 images
+train: ./data/final_fooddataset/train/images  # train images (relative to 'path') 118287 images
+val: ./data/final_fooddataset/validation/images  # val images (relative to 'path') 5000 images
 # test: ../fooddataset_1/test  # 20288 of 40670 images, submit to https://competitions.codalab.org/competitions/20794
 
 # Classes
 names:
   0: 그릇
   1: 쌀밥
-  2: 계란국
-  3: 미역국
-  4: 된장국
-  5: 김치찌개
-  6: 계란찜
-  7: 돼지갈비
-  8: 불고기
-  9: 삼치구이
-  10: 멸치볶음
-  11: 떡볶이
-  12: 무생채
-  13: 고사리나물
-  14: 깍두기
-  15: 배추김치
+  2: 미역국
+  3: 불고기
+  4: 배추김치
 #   3: motorcycle
 #   4: airplane
 #   5: bus

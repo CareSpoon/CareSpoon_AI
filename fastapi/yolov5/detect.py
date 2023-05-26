@@ -115,6 +115,7 @@ def run(opt):
 
     # Run inference
     labels = []
+    result = {}
 
     model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
     seen, windows, dt = 0, [], (Profile(), Profile(), Profile())
@@ -177,7 +178,14 @@ def run(opt):
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
                     
                     labels.append(label.split()[0])
+                    if label.split()[0] in result.keys():
+                        pass
+                    else:
+                        result[label.split()[0]] = round(float(conf), 2)
                     # predictions["object"].append(label.split()[0])
+                del result["그릇"]
+                print(result)
+                print(type(result))
                 labels = list(set(labels))
                 labels.remove('그릇')
                 print(labels)
@@ -266,6 +274,16 @@ def main(opt):
         print(e)
 
 def food_classification(source_path):
+    # source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
+    source_path = os.path.normpath(os.path.join('/home/ubuntu/CareSpoon_AI', source_path))
+    try:
+        opt = parse_opt(source_path)
+        labels = main(opt) # 여기서 에러 발생
+        return labels
+    except Exception as e:
+        print(e)
+
+def predict_percent(source_path):
     # source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
     source_path = os.path.normpath(os.path.join('/home/ubuntu/CareSpoon_AI', source_path))
     try:
