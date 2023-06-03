@@ -233,7 +233,7 @@ def parse_opt(source_path):
     
     parser = argparse.ArgumentParser()
     # parser.add_argument('--weights', nargs='+', type=str, default=['D:\\CareSpoon-AI\\fastapi\\best.pt'])
-    parser.add_argument('--weights', nargs='+', type=str, default=['/home/ubuntu/CareSpoon_AI/fastapi/best.pt'])
+    parser.add_argument('--weights', nargs='+', type=str, default=['/workspace/CareSpoon_AI/fastapi/best.pt'])
     parser.add_argument('--source', type=str, default=source_path)
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[416], help='inference size h,w')
@@ -275,7 +275,7 @@ def main(opt):
 
 def food_classification(source_path):
     # source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
-    source_path = os.path.normpath(os.path.join('/home/ubuntu/CareSpoon_AI', source_path))
+    source_path = os.path.normpath(os.path.join('/workspace/CareSpoon_AI', source_path))
     try:
         opt = parse_opt(source_path)
         labels = main(opt) # 여기서 에러 발생
@@ -285,7 +285,7 @@ def food_classification(source_path):
 
 def predict_percent(source_path):
     # source_path = os.path.normpath(os.path.join('D:\\CareSpoon-AI', source_path))
-    source_path = os.path.normpath(os.path.join('/home/ubuntu/CareSpoon_AI', source_path))
+    source_path = os.path.normpath(os.path.join('/workspace/CareSpoon_AI', source_path))
     try:
         opt = parse_opt(source_path)
         labels = main(opt) # 여기서 에러 발생
